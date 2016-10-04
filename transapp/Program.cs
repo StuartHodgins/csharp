@@ -188,15 +188,13 @@ namespace ConsoleApplication
         public static void Main(string[] args)
         {
             try {
-                // The @ prefix says this is a verbatim string, so we don't have to escape the \ character 
-                // string[] lines = System.IO.File.ReadAllLines(@"D:\projects\csharp\finance\PaymentRequisitionDetail.aspx");
-                // var srcfile = new XDocument(lines);
                 foreach(string fileName in finance_files) {
                     Console.WriteLine(" >>> Parsing {0}.", fileName);
 
-//                    FileStream fs = File.OpenRead(@"D:\projects\csharp\finance\PaymentRequisitionDetail.aspx");
+                    // The @ prefix says this is a verbatim string, so we don't have to escape the \ characters 
                     FileStream fs = File.OpenRead(@"D:\projects\csharp\finance\"+fileName);
 
+                    // Load the stream into the HtmlAgilityPack class
                     var html = new HtmlDocument();
                     html.Load(fs);
 
