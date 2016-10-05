@@ -24,26 +24,52 @@ namespace ConsoleApplication
                     return null;
                 }
 
-                // Replace embedded &nbsp; with real spaces
-                if(result.Contains("&nbsp;")) {
-                    Console.WriteLine("*** WARNING: Following String had non-breaking spaces");
-                    result = result.Replace("&nbsp;", " ");
-                }
-
-                // This is supposed to eliminate code blocks. 
-                // TODO: It seems not to work.
-                MatchCollection matches = Regex.Matches(result, "\\{\\{([^\"]*)}}");
-                if (matches.Count == 0) {
-                    // To make the constant, trim  spaces and trailing periods. 
-                    constantID = result.Trim().TrimEnd('.').ToUpper();
-                    // Then replace embedded spaces with underscores
-                    if (constantID.Contains(" ")) {
-                        constantID = constantID.Replace(" ", "_");
-                    }
-                    // Write the entry in the EN-US.lang style
-                    Console.WriteLine("  \"{0}\" : \"{1}\",", constantID, result);
+                // Skip the ones that are code blocks
+                if (!(result.Contains("{{") && result.Contains("}}"))) {
+                    constantID = FormConstantID(result);
                 }
             }
+            return constantID;
+        }
+
+        private static string FormConstantID(string result)
+        {
+            string constantID;
+            {
+                constantID = result.Trim();
+
+                // Replace embedded &nbsp; with real spaces
+                if (constantID.Contains("&nbsp;")) {
+                    Console.WriteLine("*** WARNING: Following String had non-breaking spaces");
+                    constantID = constantID.Replace("&nbsp;", " ");
+                }
+                // SGML allows &nbsp with no semicolon, but seriously, don't do that
+                if (constantID.Contains("&nbsp")) {
+                    Console.WriteLine("*** WARNING: Following String had non-breaking spaces without semicolons. Eww.");
+                    constantID = constantID.Replace("&nbsp", " ");
+                }
+
+                // Remove any embedded slashes
+                if (constantID.Contains("GST/"))
+                {
+                    constantID = constantID.Replace("/", "_");
+                }
+                if (constantID.Contains("G/L"))
+                {
+                    constantID = constantID.Replace("/", "");
+                }
+
+                // To make the constant, trim spaces and parens and trailing periods. 
+                constantID = constantID.Trim('[','(', ')',']').Trim().TrimEnd('.',':').ToUpper();
+                // Then replace embedded spaces with underscores
+                if (constantID.Contains(" "))
+                {
+                    constantID = constantID.Replace(" ", "_");
+                }
+                // Write the entry in the EN-US.lang style
+                Console.WriteLine("  \"{0}\" : \"{1}\",", constantID, result);
+            }
+
             return constantID;
         }
 
@@ -157,7 +183,8 @@ namespace ConsoleApplication
                         // Skip the ones with code inside them. 
                         MatchCollection matches = Regex.Matches(child.InnerText, "{{([^\"]*)}}");
                         if (matches.Count == 0) {
-                            string constantID = reportStaticString(child.InnerText.Trim().TrimEnd(':'));
+//                            string constantID = reportStaticString(child.InnerText.Trim().TrimEnd(':'));
+                            string constantID = reportStaticString(child.InnerText.Trim());
                             // TODO: item may be the wrong thing to pass here, or may need more context?
                             rewrite_basicTag(item, constantID); 
                         }
