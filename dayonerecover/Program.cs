@@ -59,6 +59,7 @@ namespace ConsoleApplication
                                 entries.Add(readEntry(entry));
                             }
                             catch(Exception ex) {
+                                Console.WriteLine("Error in file " + file);
                                 Console.WriteLine(ex);
                             }
                         }
@@ -86,24 +87,23 @@ namespace ConsoleApplication
             String date = entry.ReadElementContentAsString();
 
             // Sometimes the first key element is the one we want, sometimes it is the second one
+            // The single-entry versions seem to be only those  from 2013.
             entry.ReadToNextSibling("key");
             if (entry.ReadElementContentAsString() != "Entry Text")
             {
                 // It wasn't the first key, try again
-//                entry.ReadToNextSibling("key");
-//                if (entry.ReadElementContentAsString() != "Entry Text")
+                entry.ReadToNextSibling("key");
+                if (entry.ReadElementContentAsString() != "Entry Text")
                 {
                     // It wasn't the second key either, give up
-                    Console.WriteLine("ERROR: Unexpected data!");
-                    throw new Exception("fff");
+                    throw new Exception("ERROR: Could not find 'Entry text'!");
                 }
             }
-            // If we got here we found the Entry Text key, the next element is the actual entry text
+            // If we got here then we found the Entry Text key, the next element is the actual text
             entry.ReadToFollowing("string");
 
             // Return a new DayOneEntry
             return new DayOneEntry(date, entry.ReadElementContentAsString());
-            // entries.Add(new DayOneEntry(date, entry.ReadElementContentAsString()));
         }
 
         // Sort the list and then output the entries to a text file
