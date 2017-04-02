@@ -6,6 +6,8 @@ using System.Xml;
 
 namespace ConsoleApplication
 {
+    // DayOneEntry: Simple object for adding to a sortable List
+    // Holds the entry date and the text 
     public class DayOneEntry : IComparable<DayOneEntry> {
         public String date {get; set;}
         public String text {get; set;} 
@@ -21,78 +23,110 @@ namespace ConsoleApplication
             return "Date: " + date + "   Text: " + text;
         }
 
-        // Default comparer for DayOneEntry type.
+        //  Comparator for DayOneEntry type.
         public int CompareTo(DayOneEntry doe)
         {
-                // TODO write the comparator
+                // We only care about the date for sorting
                 return date.CompareTo(doe.date);
         }
     }
         
     public class Program
     {
+        // Where did I stash the DayOne backups?
         static string dayonedir = @"D:\kelly_iphone_media\com.dayonelog.dayoneiphone\Library\Application Support\Journal.dayone\entries\";
+        // We need to pass XmlReader a settings object so it will let us parse the files
         static XmlReaderSettings mySettings = new XmlReaderSettings();
-        static string sep_line = "------------------------------------";
         
         public static void Main(string[] args)
         {
+            // Make a list so we can sort them before we output them
             List<DayOneEntry> entries = new List<DayOneEntry>();
-            try {
-                // Tell XmlReader that it's OK to parse the files
+
+            // Do the file handling in a try jsut in case of file problems
+            try
+            {
+                // Settings object tells XmlReader that it's OK to parse the files
                 mySettings.DtdProcessing = DtdProcessing.Ignore;
 
                 foreach (string file in Directory.EnumerateFiles(dayonedir))
                 {
-                   FileStream fs = File.OpenRead(file);
-                   using (XmlReader entry = XmlReader.Create(fs, mySettings))
-                   {
-                        entry.ReadToFollowing("date");
-                        String date = entry.ReadElementContentAsString();
-//                        Console.WriteLine("Date: " + date);
-                        // Sometimes the first key is the one we want, sometimes it is the second one
-                        entry.ReadToNextSibling("key");
-                        if( entry.ReadElementContentAsString() != "Entry Text" ) {
-                            // It wasn't the first key
-                            entry.ReadToNextSibling("key");
-                            if( entry.ReadElementContentAsString() != "Entry Text" ) {
-                                // It wasn't the second key either
-                                Console.WriteLine("ERROR: Unexpected data!");
-                                continue;
+                    using (FileStream fs = File.OpenRead(file))
+                    {
+                        using (XmlReader entry = XmlReader.Create(fs, mySettings))
+                        {
+                            try {
+                                entries.Add(readEntry(entry));
+                            }
+                            catch(Exception ex) {
+                                Console.WriteLine(ex);
                             }
                         }
-                        // If we got here we found the Entry Text, the next element is the entry text
-                        entry.ReadToFollowing("string");
-                        String text = entry.ReadElementContentAsString();
-//                        Console.WriteLine("Data: " + text);
-                        entries.Add(new DayOneEntry(date,text));
-                   }
+                    }
                 }
-           }
-           catch (ArgumentNullException) {
-                Console.WriteLine("Hey! Something went wrong.");   
-           } catch (SecurityException) {
-                Console.WriteLine("Hey! Something went wrong.");   
-           }
+            }
+            // These don't seem to be needed with my test data
+            catch (ArgumentNullException)
+            {
+                Console.WriteLine("Hey! Something went wrong.");
+            }
+            catch (SecurityException)
+            {
+                Console.WriteLine("Hey! Something went wrong.");
+            }
 
-           // Output the sorted List
-           entries.Sort();
-           
-           // Output file
+            // We're done, output the results
+            produceList(entries);
+        }
 
-            var  recoveryFile = System.IO.File.Create("d1_recover.txt");
-            using (System.IO.StreamWriter file = 
-                new System.IO.StreamWriter(recoveryFile))
+        // Parsing method for a DayOne entry file
+        private static DayOneEntry readEntry(XmlReader entry) {
+            // Find the date element, should always be first
+            entry.ReadToFollowing("date");
+            String date = entry.ReadElementContentAsString();
+
+            // Sometimes the first key element is the one we want, sometimes it is the second one
+            entry.ReadToNextSibling("key");
+            if (entry.ReadElementContentAsString() != "Entry Text")
+            {
+                // It wasn't the first key, try again
+//                entry.ReadToNextSibling("key");
+//                if (entry.ReadElementContentAsString() != "Entry Text")
                 {
-                    foreach( DayOneEntry doe in entries) {
-                        Console.WriteLine("Date: " + doe.date);
-                        file.WriteLine("Date: " + doe.date);
-                        Console.WriteLine("Text: " + doe.text);
-                        file.WriteLine("Text: " + doe.text);
-                        Console.WriteLine(sep_line);
+                    // It wasn't the second key either, give up
+                    Console.WriteLine("ERROR: Unexpected data!");
+                    throw new Exception("fff");
+                }
+            }
+            // If we got here we found the Entry Text key, the next element is the actual entry text
+            entry.ReadToFollowing("string");
+
+            // Return a new DayOneEntry
+            return new DayOneEntry(date, entry.ReadElementContentAsString());
+            // entries.Add(new DayOneEntry(date, entry.ReadElementContentAsString()));
+        }
+
+        // Sort the list and then output the entries to a text file
+        private static void produceList(List<DayOneEntry> entries)
+        {
+            // A separator line to chunk up the output
+            string sep_line = "------------------------------------";
+
+            entries.Sort();
+
+            using (var recoveryFile = System.IO.File.Create("d1_recover.txt"))
+            {
+                using (System.IO.StreamWriter file =
+                    new System.IO.StreamWriter(recoveryFile))
+                {
+                    foreach (DayOneEntry doe in entries)
+                    {
+                        file.WriteLine(doe.date);
+                        file.WriteLine(doe.text);
                         file.WriteLine(sep_line);
                     }
                 }
+            }
         }
     }
 }
